@@ -2167,6 +2167,12 @@ function githubRepository(context2) {
     prefix: `repos/${repository.split("/").map(encodeURIComponent).join("/")}`
   };
 }
+function issueUrl(value, repository, paths) {
+  const url = new URL(requireString(value));
+  if (url.protocol !== "https:" || url.host !== repository.host || url.username || url.password || !paths.includes(url.pathname.toLowerCase()))
+    throw new Error("Issue response belongs to a different repository or issue.");
+  return url.href;
+}
 function githubIssue(item, repository) {
   if (item.pull_request || !Number.isSafeInteger(item.number) || item.number < 1)
     throw new Error("Invalid issue response");
@@ -2182,7 +2188,9 @@ function githubIssue(item, repository) {
     ),
     title: item.title.slice(0, 200),
     body: typeof item.body === "string" ? item.body.slice(0, 6e3) : "",
-    url: requireString(item.html_url),
+    url: issueUrl(item.html_url, repository, [
+      `/${repository.repository}/issues/${item.number}`.toLowerCase()
+    ]),
     open: item.state === "open"
   };
 }
@@ -2254,7 +2262,10 @@ function gitlabIssue(item, repository) {
     ),
     title: item.title.slice(0, 200),
     body: typeof item.description === "string" ? item.description.slice(0, 6e3) : "",
-    url: requireString(item.web_url),
+    url: issueUrl(item.web_url, repository, [
+      `/${repository.repository}/-/issues/${item.iid}`.toLowerCase(),
+      `/${repository.repository}/-/work_items/${item.iid}`.toLowerCase()
+    ]),
     open: item.state === "opened"
   };
 }
@@ -2360,13 +2371,16 @@ var plugin_default = {
           throw new Error(
             "The project's repository has changed; remove this link before selecting from the new repository."
           );
-        return (repo.source === "gitlab" ? gitlabIssue : githubIssue)(
+        const current2 = (repo.source === "gitlab" ? gitlabIssue : githubIssue)(
           await source(
             p,
             `${repo.prefix}/issues/${encodeURIComponent(issue.key)}`
           ),
           repo
         );
+        if (current2.id !== issue.id)
+          throw new Error("Issue identity has changed; remove the stale link.");
+        return current2;
       }
       const { organization, issue: current } = await linear(
         p,

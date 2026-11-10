@@ -37,7 +37,7 @@ test("provider and repository identity cannot fall back to a different forge", (
   );
   assert.notEqual(
     githubIssue(issue, repo).id,
-    githubIssue(issue, { ...repo, repository: "acme/other" }).id,
+    githubIssue({ ...issue, html_url: "https://github.com/acme/other/issues/123" }, { ...repo, repository: "acme/other" }).id,
   );
   assert.ok(
     taskReference(
@@ -97,6 +97,8 @@ test("links survive restart, refresh before use, reject closed selections and cl
     await run(api, "select", input);
     api = await activate();
     assert.match(await Effect.runPromise(api.taskContext(input)), /Details/);
+    current = { ...issue, number: 124, html_url: "https://github.com/acme/app/issues/124" };
+    assert.match((await run(api, "open", input)).view.blocks[0].text, /unavailable/);
     current = { ...issue, body: "Updated", state: "closed" };
     assert.match(
       await Effect.runPromise(api.taskContext(input)),
@@ -152,6 +154,10 @@ test("GitLab keeps nested repository identity and uses issue iid rather than glo
     },
     repository,
   );
+  assert.equal(
+    gitlabIssue({ iid: 123, title: "Fix", web_url: "https://gitlab.example/team/subgroup/app/-/work_items/123", state: "opened" }, repository).id,
+    item.id,
+  );
   assert.equal(item.key, "123");
   assert.equal(item.id, "gitlab:gitlab.example:team/subgroup/app:123");
   assert.equal(item.open, true);
@@ -166,7 +172,7 @@ test("GitLab keeps nested repository identity and uses issue iid rather than glo
 
 test("bounded task context retains every selected issue identity", () => {
   const issues = Array.from({ length: 20 }, (_, i) => ({
-    ...githubIssue({ ...issue, number: i + 1 }, repo),
+    ...githubIssue({ ...issue, number: i + 1, html_url: `https://github.com/acme/app/issues/${i + 1}` }, repo),
     body: "x".repeat(6000),
   }));
   const reference = taskReference(issues);
@@ -271,4 +277,9 @@ test("Linear requires consent, keeps credentials private, paginates and clears l
   } finally {
     await rm(dataDirectory, { recursive: true, force: true });
   }
+});
+
+test("does not relabel issue redirects as an issue in the configured repository", () => {
+  assert.throws(() => githubIssue({ ...issue, html_url: "https://github.com/acme/other/issues/123" }, repo));
+  assert.throws(() => gitlabIssue({ iid: 123, title: "Moved", web_url: "https://gitlab.example/other/app/-/issues/123", state: "opened" }, { host: "gitlab.example", repository: "team/app" }));
 });

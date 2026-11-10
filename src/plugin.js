@@ -128,13 +128,16 @@ export default {
             throw new Error(
               "The project's repository has changed; remove this link before selecting from the new repository.",
             );
-          return (repo.source === "gitlab" ? gitlabIssue : githubIssue)(
+          const current = (repo.source === "gitlab" ? gitlabIssue : githubIssue)(
             await source(
               p,
               `${repo.prefix}/issues/${encodeURIComponent(issue.key)}`,
             ),
             repo,
           );
+          if (current.id !== issue.id)
+            throw new Error("Issue identity has changed; remove the stale link.");
+          return current;
         }
         const { organization, issue: current } = await linear(
           p,

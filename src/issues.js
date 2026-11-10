@@ -24,6 +24,17 @@ export function githubRepository(context) {
     prefix: `repos/${repository.split("/").map(encodeURIComponent).join("/")}`,
   };
 }
+function issueUrl(value, repository, paths) {
+  const url = new URL(requireString(value));
+  if (
+    url.protocol !== "https:" ||
+    url.host !== repository.host ||
+    url.username || url.password ||
+    !paths.includes(url.pathname.toLowerCase())
+  )
+    throw new Error("Issue response belongs to a different repository or issue.");
+  return url.href;
+}
 export function githubIssue(item, repository) {
   if (
     item.pull_request ||
@@ -44,7 +55,9 @@ export function githubIssue(item, repository) {
       ),
     title: item.title.slice(0, 200),
     body: typeof item.body === "string" ? item.body.slice(0, 6000) : "",
-    url: requireString(item.html_url),
+    url: issueUrl(item.html_url, repository, [
+      `/${repository.repository}/issues/${item.number}`.toLowerCase(),
+    ]),
     open: item.state === "open",
   };
 }
@@ -138,7 +151,10 @@ export function gitlabIssue(item, repository) {
       typeof item.description === "string"
         ? item.description.slice(0, 6000)
         : "",
-    url: requireString(item.web_url),
+    url: issueUrl(item.web_url, repository, [
+      `/${repository.repository}/-/issues/${item.iid}`.toLowerCase(),
+      `/${repository.repository}/-/work_items/${item.iid}`.toLowerCase(),
+    ]),
     open: item.state === "opened",
   };
 }
