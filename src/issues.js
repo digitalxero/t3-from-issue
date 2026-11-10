@@ -1,0 +1,32 @@
+const requireString = (value) => {
+  if (typeof value !== "string" || !value) throw new Error("Invalid issue response");
+  return value;
+};
+export function githubRepository(context) {
+  if (context.provider !== "github" || !context.apiReads || !context.remoteUrl) throw new Error(`Source Control provider '${context.provider}' is unsupported for issue reads.`);
+  const raw = context.remoteUrl.replace(/^git@([^:]+):/, "https://$1/");
+  const url = new URL(raw);
+  const host = new URL(context.baseUrl).host;
+  if (url.host !== host) throw new Error("Repository host does not match the selected source-control host.");
+  const repository = url.pathname.replace(/^\//, "").replace(/\.git$/, "");
+  if (!/^[\w.-]+\/[\w.-]+$/.test(repository)) throw new Error("Unsupported repository path.");
+  return { host, repository, prefix: `repos/${repository.split("/").map(encodeURIComponent).join("/")}` };
+}
+export function githubIssue(item, repository) {
+  if (item.pull_request || !Number.isSafeInteger(item.number) || item.number < 1) throw new Error("Invalid issue response");
+  return { source: "github", host: repository.host, repository: repository.repository, key: String(item.number), id: `github:${repository.host}:${repository.repository}:${item.number}`, label: `${repository.repository}#${item.number}: ${requireString(item.title)}`.slice(0, 200), title: item.title.slice(0, 200), body: typeof item.body === "string" ? item.body.slice(0, 6000) : "", url: requireString(item.html_url), open: item.state === "open" };
+}
+export function linearIssue(item, workspace) {
+  return { source: "linear", host: "linear.app", repository: workspace, key: requireString(item.id), id: `linear:${workspace}:${item.id}`, label: `${requireString(item.identifier)}: ${requireString(item.title)}`.slice(0, 200), title: item.title.slice(0, 200), body: typeof item.description === "string" ? item.description.slice(0, 6000) : "", url: requireString(item.url), open: !item.archivedAt && !["completed", "canceled"].includes(item.state?.type) };
+}
+export function taskReference(issues) {
+  let budget = 14000;
+  const parts = [];
+  for (const issue of issues) {
+    const text = `${issue.id}\n${issue.title}\n${issue.url}\n${issue.open ? "Open" : "Closed"}\n${issue.body}`;
+    if (budget <= 0) break;
+    parts.push(text.slice(0, budget));
+    budget -= parts.at(-1).length + 2;
+  }
+  return parts.join("\n\n");
+}
