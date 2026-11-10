@@ -33,7 +33,7 @@ test("links survive restart, refresh before use, reject closed selections and cl
     api = await activate();
     assert.match(await Effect.runPromise(api.taskContext(input)), /Details/);
     current = { ...issue, body: "Updated", state: "closed" };
-    assert.match(await Effect.runPromise(api.taskContext(input)), /Closed\nUpdated/);
+    assert.match(await Effect.runPromise(api.taskContext(input)), /Closed[\s\S]*Updated/);
     await assert.rejects(run(api, "select", { ...input, threadId: "another" }));
     accessible = false;
     assert.doesNotMatch(await Effect.runPromise(api.taskContext(input)), /Details|Updated/);
@@ -51,4 +51,11 @@ test("GitLab keeps nested repository identity and uses issue iid rather than glo
   assert.equal(item.id, "gitlab:gitlab.example:team/subgroup/app:123");
   assert.equal(item.open, true);
   assert.equal(gitlabIssue({ iid: 123, title: "Fix", web_url: item.url, state: "closed" }, repository).open, false);
+});
+
+test("bounded task context retains every selected issue identity", () => {
+  const issues = Array.from({ length: 20 }, (_, i) => ({ ...githubIssue({ ...issue, number: i + 1 }, repo), body: "x".repeat(6000) }));
+  const reference = taskReference(issues);
+  assert.ok(reference.length <= 14000);
+  for (const item of issues) assert.ok(reference.includes(item.id));
 });

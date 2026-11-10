@@ -20,15 +20,12 @@ export function linearIssue(item, workspace) {
   return { source: "linear", host: "linear.app", repository: workspace, key: requireString(item.id), id: `linear:${workspace}:${item.id}`, label: `${requireString(item.identifier)}: ${requireString(item.title)}`.slice(0, 200), title: item.title.slice(0, 200), body: typeof item.description === "string" ? item.description.slice(0, 6000) : "", url: requireString(item.url), open: !item.archivedAt && !["completed", "canceled"].includes(item.state?.type) };
 }
 export function taskReference(issues) {
-  let budget = 14000;
-  const parts = [];
-  for (const issue of issues) {
-    const text = `${issue.id}\n${issue.title}\n${issue.url}\n${issue.open ? "Open" : "Closed"}\n${issue.body}`;
-    if (budget <= 0) break;
-    parts.push(text.slice(0, budget));
-    budget -= parts.at(-1).length + 2;
-  }
-  return parts.join("\n\n");
+  if (issues.length === 0) return "";
+  const index = issues.map((issue) => `${issue.id}\n${issue.title}\n${issue.url}\n${issue.open ? "Open" : "Closed"}`).join("\n\n");
+  const remaining = 14000 - index.length - issues.length * 4;
+  if (remaining < 0) throw new Error("Selected issue identities exceed the task context budget");
+  const share = Math.floor(remaining / issues.length);
+  return index + "\n\n" + issues.map((issue, i) => `[${i + 1}] ${issue.body.slice(0, share)}`).join("\n");
 }
 
 export function gitlabRepository(context) {
