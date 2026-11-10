@@ -2088,6 +2088,21 @@ ${issue.body}`;
   }
   return parts.join("\n\n");
 }
+function gitlabRepository(context2) {
+  if (context2.provider !== "gitlab" || !context2.apiReads || !context2.remoteUrl) throw new Error(`Source Control provider '${context2.provider}' is unsupported for issue reads.`);
+  const url = new URL(context2.remoteUrl.replace(/^git@([^:]+):/, "https://$1/"));
+  const host = new URL(context2.baseUrl).host;
+  const repository = url.pathname.replace(/^\//, "").replace(/\.git$/, "");
+  if (url.host !== host || !/^[\w.-]+(?:\/[\w.-]+)+$/.test(repository)) throw new Error("Unsupported repository identity");
+  return { host, repository, prefix: `projects/${encodeURIComponent(repository)}` };
+}
+function sourceRepository(context2) {
+  return context2.provider === "gitlab" ? { ...gitlabRepository(context2), source: "gitlab" } : { ...githubRepository(context2), source: "github" };
+}
+function gitlabIssue(item, repository) {
+  if (!Number.isSafeInteger(item.iid) || item.iid < 1) throw new Error("Invalid issue response");
+  return { source: "gitlab", host: repository.host, repository: repository.repository, key: String(item.iid), id: `gitlab:${repository.host}:${repository.repository}:${item.iid}`, label: `${repository.repository}#${item.iid}: ${requireString(item.title)}`.slice(0, 200), title: item.title.slice(0, 200), body: typeof item.description === "string" ? item.description.slice(0, 6e3) : "", url: requireString(item.web_url), open: item.state === "opened" };
+}
 
 // src/plugin.js
 var fail2 = (operation, cause) => ({ _tag: "PluginError", operation, cause });
@@ -2144,10 +2159,10 @@ var plugin_default = {
     const describe = (id) => runPromise2(context2.projects.describe(id));
     const source = async (id, path) => JSON.parse(await runPromise2(context2.projects.readSource({ projectId: id, path })));
     const refresh = async (p, issue) => {
-      if (issue.source === "github") {
-        const repo = githubRepository(await describe(p));
-        if (repo.host !== issue.host || repo.repository !== issue.repository) throw new Error("The project's repository has changed; remove this link before selecting from the new repository.");
-        return githubIssue(await source(p, `${repo.prefix}/issues/${encodeURIComponent(issue.key)}`), repo);
+      if (issue.source === "github" || issue.source === "gitlab") {
+        const repo = sourceRepository(await describe(p));
+        if (repo.source !== issue.source || repo.host !== issue.host || repo.repository !== issue.repository) throw new Error("The project's repository has changed; remove this link before selecting from the new repository.");
+        return (repo.source === "gitlab" ? gitlabIssue : githubIssue)(await source(p, `${repo.prefix}/issues/${encodeURIComponent(issue.key)}`), repo);
       }
       const { organization, issue: current } = await linear(p, `query($id: String!) { organization { id } issue(id: $id) { ${fields} } }`, { id: issue.key });
       if (organization.id !== issue.repository || !current) throw new Error("Issue is unavailable in the connected Linear workspace.");
@@ -2173,16 +2188,22 @@ var plugin_default = {
       let nextCursor;
       try {
         if (config.source === "source-control") {
-          const repo = githubRepository(await describe(p));
+          const repo = sourceRepository(await describe(p));
           const page = cursor ? Number(cursor) : 1;
           if (!Number.isSafeInteger(page) || page < 1 || page > 100) throw new Error("Invalid search page");
-          const q = `repo:${repo.repository} is:issue is:open ${query}`;
-          const response = await source(p, `search/issues?q=${encodeURIComponent(query + " repo:" + repo.repository + " is:issue is:open")}&per_page=20&page=${page}`);
-          if (!Array.isArray(response.items)) throw new Error("Invalid source-control response");
-          for (const item of response.items) {
-            if (item.repository_url?.endsWith(`/${repo.prefix}`) && !item.pull_request && item.state === "open") options.push(githubIssue(item, repo));
+          if (repo.source === "gitlab") {
+            const response = await source(p, `${repo.prefix}/issues?state=opened&scope=all&search=${encodeURIComponent(query)}&per_page=20&page=${page}`);
+            if (!Array.isArray(response)) throw new Error("Invalid source-control response");
+            options.push(...response.map((item) => gitlabIssue(item, repo)).filter((item) => item.open));
+            if (response.length === 20) nextCursor = String(page + 1);
+          } else {
+            const response = await source(p, `search/issues?q=${encodeURIComponent(query + " repo:" + repo.repository + " is:issue is:open")}&per_page=20&page=${page}`);
+            if (!Array.isArray(response.items)) throw new Error("Invalid source-control response");
+            for (const item of response.items) {
+              if (item.repository_url?.endsWith(`/${repo.prefix}`) && !item.pull_request && item.state === "open") options.push(githubIssue(item, repo));
+            }
+            if (page * 20 < Math.min(response.total_count, 1e3)) nextCursor = String(page + 1);
           }
-          if (page * 20 < Math.min(response.total_count, 1e3)) nextCursor = String(page + 1);
         } else {
           const filter2 = { state: { type: { nin: ["completed", "canceled"] } }, ...query ? { or: [{ title: { containsIgnoreCase: query } }, { description: { containsIgnoreCase: query } }] } : {} };
           const response = await linear(p, `query($filter: IssueFilter, $after: String) { organization { id } issues(first: 20, after: $after, filter: $filter) { nodes { ${fields} } pageInfo { hasNextPage endCursor } } }`, { filter: filter2, after: cursor ?? null });

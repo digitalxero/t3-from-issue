@@ -11,9 +11,9 @@ and saved threads. Selected issues open inside the client and supply bounded,
 refreshed reference material to agent turns. Links are stored on the owning
 server and survive client reconnects and plugin restarts.
 
-Initial issue sources are Source Control and Linear. GitHub reads reuse the
+Initial issue sources are Source Control and Linear. GitHub reads and GitLab reads through `glab api` reuse the
 host's selected account and credentials for the project's detected repository.
-GitLab, GitCafe, Forgejo, Bitbucket, Azure DevOps, Cursor Origin and unknown hosts
+GitCafe, Forgejo, Bitbucket, Azure DevOps, Cursor Origin and unknown hosts
 currently return explicit unsupported status. There is no GitHub fallback.
 Linear uses a personal API key entered through a password field with explicit
 per-project consent. Use a read-only key limited to the teams you intend to

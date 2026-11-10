@@ -5,7 +5,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import plugin from "../src/plugin.js";
-import { githubIssue, githubRepository, taskReference } from "../src/issues.js";
+import { gitlabIssue, gitlabRepository, githubIssue, githubRepository, taskReference } from "../src/issues.js";
 
 const repo = { host: "github.com", repository: "acme/app", prefix: "repos/acme/app" };
 const issue = { number: 123, title: "Fix navigation", body: "Details", html_url: "https://github.com/acme/app/issues/123", state: "open" };
@@ -41,4 +41,14 @@ test("links survive restart, refresh before use, reject closed selections and cl
     await run(api, "remove", input);
     assert.equal(await Effect.runPromise(api.taskContext(input)), "");
   } finally { await rm(dataDirectory, { recursive: true, force: true }); }
+});
+
+test("GitLab keeps nested repository identity and uses issue iid rather than global id", () => {
+  const repository = gitlabRepository({ provider: "gitlab", apiReads: true, baseUrl: "https://gitlab.example", remoteUrl: "git@gitlab.example:team/subgroup/app.git" });
+  assert.equal(repository.prefix, "projects/team%2Fsubgroup%2Fapp");
+  const item = gitlabIssue({ id: 9999, iid: 123, title: "Fix", description: "Details", web_url: "https://gitlab.example/team/subgroup/app/-/issues/123", state: "opened" }, repository);
+  assert.equal(item.key, "123");
+  assert.equal(item.id, "gitlab:gitlab.example:team/subgroup/app:123");
+  assert.equal(item.open, true);
+  assert.equal(gitlabIssue({ iid: 123, title: "Fix", web_url: item.url, state: "closed" }, repository).open, false);
 });

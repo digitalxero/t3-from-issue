@@ -30,3 +30,19 @@ export function taskReference(issues) {
   }
   return parts.join("\n\n");
 }
+
+export function gitlabRepository(context) {
+  if (context.provider !== "gitlab" || !context.apiReads || !context.remoteUrl) throw new Error(`Source Control provider '${context.provider}' is unsupported for issue reads.`);
+  const url = new URL(context.remoteUrl.replace(/^git@([^:]+):/, "https://$1/"));
+  const host = new URL(context.baseUrl).host;
+  const repository = url.pathname.replace(/^\//, "").replace(/\.git$/, "");
+  if (url.host !== host || !/^[\w.-]+(?:\/[\w.-]+)+$/.test(repository)) throw new Error("Unsupported repository identity");
+  return { host, repository, prefix: `projects/${encodeURIComponent(repository)}` };
+}
+export function sourceRepository(context) {
+  return context.provider === "gitlab" ? { ...gitlabRepository(context), source: "gitlab" } : { ...githubRepository(context), source: "github" };
+}
+export function gitlabIssue(item, repository) {
+  if (!Number.isSafeInteger(item.iid) || item.iid < 1) throw new Error("Invalid issue response");
+  return { source: "gitlab", host: repository.host, repository: repository.repository, key: String(item.iid), id: `gitlab:${repository.host}:${repository.repository}:${item.iid}`, label: `${repository.repository}#${item.iid}: ${requireString(item.title)}`.slice(0, 200), title: item.title.slice(0, 200), body: typeof item.description === "string" ? item.description.slice(0, 6000) : "", url: requireString(item.web_url), open: item.state === "opened" };
+}

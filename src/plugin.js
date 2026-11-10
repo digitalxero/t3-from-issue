@@ -2,7 +2,7 @@ import * as Effect from "effect/Effect";
 import { readFile, mkdir, writeFile, rename } from "node:fs/promises";
 import { join } from "node:path";
 import { createHash } from "node:crypto";
-import { githubRepository, githubIssue, linearIssue, taskReference } from "./issues.js";
+import { sourceRepository, gitlabIssue, githubIssue, linearIssue, taskReference } from "./issues.js";
 
 const fail = (operation, cause) => ({ _tag: "PluginError", operation, cause });
 const effect = (operation, fn) => Effect.tryPromise({ try: fn, catch: (cause) => fail(operation, cause) });
@@ -37,10 +37,10 @@ export default {
     const describe = (id) => Effect.runPromise(context.projects.describe(id));
     const source = async (id, path) => JSON.parse(await Effect.runPromise(context.projects.readSource({ projectId: id, path })));
     const refresh = async (p, issue) => {
-      if (issue.source === "github") {
-        const repo = githubRepository(await describe(p));
-        if (repo.host !== issue.host || repo.repository !== issue.repository) throw new Error("The project's repository has changed; remove this link before selecting from the new repository.");
-        return githubIssue(await source(p, `${repo.prefix}/issues/${encodeURIComponent(issue.key)}`), repo);
+      if ((issue.source === "github" || issue.source === "gitlab")) {
+        const repo = sourceRepository(await describe(p));
+        if (repo.source !== issue.source || repo.host !== issue.host || repo.repository !== issue.repository) throw new Error("The project's repository has changed; remove this link before selecting from the new repository.");
+        return (repo.source === "gitlab" ? gitlabIssue : githubIssue)(await source(p, `${repo.prefix}/issues/${encodeURIComponent(issue.key)}`), repo);
       }
       const { organization, issue: current } = await linear(p, `query($id: String!) { organization { id } issue(id: $id) { ${fields} } }`, { id: issue.key });
       if (organization.id !== issue.repository || !current) throw new Error("Issue is unavailable in the connected Linear workspace.");
@@ -62,15 +62,22 @@ export default {
       const options = []; let nextCursor;
       try {
         if (config.source === "source-control") {
-          const repo = githubRepository(await describe(p));
+          const repo = sourceRepository(await describe(p));
           const page = cursor ? Number(cursor) : 1;
           if (!Number.isSafeInteger(page) || page < 1 || page > 100) throw new Error("Invalid search page");
-          const q = `repo:${repo.repository} is:issue is:open ${query}`;
-          // Repository and open-state constraints follow the text, so typed search cannot broaden scope.
+
+          if (repo.source === "gitlab") {
+            const response = await source(p, `${repo.prefix}/issues?state=opened&scope=all&search=${encodeURIComponent(query)}&per_page=20&page=${page}`);
+            if (!Array.isArray(response)) throw new Error("Invalid source-control response");
+            options.push(...response.map((item) => gitlabIssue(item, repo)).filter((item) => item.open));
+            if (response.length === 20) nextCursor = String(page + 1);
+          } else {
+          // Repository constraints follow the text; results are checked against the selected repository.
           const response = await source(p, `search/issues?q=${encodeURIComponent(query + ' repo:' + repo.repository + ' is:issue is:open')}&per_page=20&page=${page}`);
           if (!Array.isArray(response.items)) throw new Error("Invalid source-control response");
           for (const item of response.items) { if (item.repository_url?.endsWith(`/${repo.prefix}`) && !item.pull_request && item.state === "open") options.push(githubIssue(item, repo)); }
           if (page * 20 < Math.min(response.total_count, 1000)) nextCursor = String(page + 1);
+          }
         } else {
           const filter = { state: { type: { nin: ["completed", "canceled"] } }, ...(query ? { or: [{ title: { containsIgnoreCase: query } }, { description: { containsIgnoreCase: query } }] } : {}) };
           const response = await linear(p, `query($filter: IssueFilter, $after: String) { organization { id } issues(first: 20, after: $after, filter: $filter) { nodes { ${fields} } pageInfo { hasNextPage endCursor } } }`, { filter, after: cursor ?? null });
