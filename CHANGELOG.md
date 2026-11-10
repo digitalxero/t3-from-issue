@@ -3,6 +3,8 @@
 =============
 2026-11-10
 
+* fix: keep issue numbers visible in compact thread panels (0ebb455e)
+* chore: refresh unpublished v0.1.0 changelog (0bc27eae)
 * fix: reject redirected issue identity changes (03929c30)
 * docs: describe installation and verified platform limits (0a20bbd0)
 * chore: prepare v0.1.0 release notes (ad46e361)

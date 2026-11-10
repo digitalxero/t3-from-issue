@@ -1,7 +1,41 @@
 - semver: 0.1.0
-  date: 2026-11-10T11:56:04.49470243-08:00
+  date: 2026-11-10T11:59:41.473331865-08:00
   packager: DigitalXero
   changes:
+    - commit: 0ebb455ef615147f3b2d368bdd13e54a88f5903b
+      note: 'fix: keep issue numbers visible in compact thread panels'
+      author:
+        name: Dj Gilcrease
+        email: digitalxero@gmail.com
+      committer:
+        name: Dj Gilcrease
+        email: digitalxero@gmail.com
+      conventional_commit:
+        category: fix
+        scope: ""
+        description: keep issue numbers visible in compact thread panels
+        body: ""
+        footer: []
+        major: false
+        minor: false
+        patch: true
+    - commit: 0bc27eaef2623b7fd1ffe8a766c6e50038746463
+      note: 'chore: refresh unpublished v0.1.0 changelog'
+      author:
+        name: Dj Gilcrease
+        email: digitalxero@gmail.com
+      committer:
+        name: Dj Gilcrease
+        email: digitalxero@gmail.com
+      conventional_commit:
+        category: chore
+        scope: ""
+        description: refresh unpublished v0.1.0 changelog
+        body: ""
+        footer: []
+        major: false
+        minor: false
+        patch: false
     - commit: 03929c30ce53f918099aeb70b0bcd18305acbf97
       note: 'fix: reject redirected issue identity changes'
       author:
