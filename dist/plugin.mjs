@@ -2182,7 +2182,7 @@ function githubIssue(item, repository) {
     repository: repository.repository,
     key: String(item.number),
     id: `github:${repository.host}:${repository.repository}:${item.number}`,
-    label: `${repository.repository}#${item.number}: ${requireString(item.title)}`.slice(
+    label: `#${item.number} \xB7 ${repository.repository}: ${requireString(item.title)}`.slice(
       0,
       200
     ),
@@ -2256,7 +2256,7 @@ function gitlabIssue(item, repository) {
     repository: repository.repository,
     key: String(item.iid),
     id: `gitlab:${repository.host}:${repository.repository}:${item.iid}`,
-    label: `${repository.repository}#${item.iid}: ${requireString(item.title)}`.slice(
+    label: `#${item.iid} \xB7 ${repository.repository}: ${requireString(item.title)}`.slice(
       0,
       200
     ),

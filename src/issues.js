@@ -49,7 +49,7 @@ export function githubIssue(item, repository) {
     key: String(item.number),
     id: `github:${repository.host}:${repository.repository}:${item.number}`,
     label:
-      `${repository.repository}#${item.number}: ${requireString(item.title)}`.slice(
+      `#${item.number} · ${repository.repository}: ${requireString(item.title)}`.slice(
         0,
         200,
       ),
@@ -142,7 +142,7 @@ export function gitlabIssue(item, repository) {
     key: String(item.iid),
     id: `gitlab:${repository.host}:${repository.repository}:${item.iid}`,
     label:
-      `${repository.repository}#${item.iid}: ${requireString(item.title)}`.slice(
+      `#${item.iid} · ${repository.repository}: ${requireString(item.title)}`.slice(
         0,
         200,
       ),
