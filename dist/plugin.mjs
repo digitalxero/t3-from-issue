@@ -1079,6 +1079,73 @@ var Prototype = (options) => makePrimitiveProto({
   [evaluate]: options.evaluate
 });
 
+// node_modules/effect/dist/internal/result.js
+var TypeId = "~effect/Result";
+var CommonProto = {
+  [TypeId]: {
+    /* v8 ignore next 2 */
+    _A: (_) => _,
+    _E: (_) => _
+  },
+  ...PipeInspectableProto,
+  [Symbol.iterator]() {
+    return new SingleShotGen(this);
+  }
+};
+var SuccessProto = /* @__PURE__ */ Object.assign(/* @__PURE__ */ Object.create(CommonProto), {
+  _tag: "Success",
+  _op: "Success",
+  [symbol2](that) {
+    return isResult(that) && isSuccess(that) && equals(this.success, that.success);
+  },
+  [symbol]() {
+    return combine(hash(this._tag))(hash(this.success));
+  },
+  toString() {
+    return `success(${format(this.success)})`;
+  },
+  toJSON() {
+    return {
+      _id: "Result",
+      _tag: this._tag,
+      value: toJson(this.success)
+    };
+  }
+});
+var FailureProto = /* @__PURE__ */ Object.assign(/* @__PURE__ */ Object.create(CommonProto), {
+  _tag: "Failure",
+  _op: "Failure",
+  [symbol2](that) {
+    return isResult(that) && isFailure(that) && equals(this.failure, that.failure);
+  },
+  [symbol]() {
+    return combine(hash(this._tag))(hash(this.failure));
+  },
+  toString() {
+    return `failure(${format(this.failure)})`;
+  },
+  toJSON() {
+    return {
+      _id: "Result",
+      _tag: this._tag,
+      failure: toJson(this.failure)
+    };
+  }
+});
+var isResult = (input) => hasProperty(input, TypeId);
+var isFailure = (result2) => result2._tag === "Failure";
+var isSuccess = (result2) => result2._tag === "Success";
+var FailureImpl = function(failure) {
+  this.failure = failure;
+};
+FailureImpl.prototype = FailureProto;
+var fail = (failure) => new FailureImpl(failure);
+var SuccessImpl = function(success) {
+  this.success = success;
+};
+SuccessImpl.prototype = SuccessProto;
+var succeed = (success) => new SuccessImpl(success);
+
 // node_modules/effect/dist/Context.js
 var ServiceTypeId = "~effect/Context/Service";
 var Service = function() {
@@ -1132,7 +1199,7 @@ var ServiceProto = {
 };
 var cacheKeys = /* @__PURE__ */ new Set();
 var ReferenceTypeId = "~effect/Context/Reference";
-var TypeId = "~effect/Context";
+var TypeId2 = "~effect/Context";
 var FlattenAfterBaseHits = 8;
 var makeImpl = (cacheRoot, base, overlay, depth, maxDepth) => {
   const self = Object.create(Proto);
@@ -1181,7 +1248,7 @@ var Proto = {
     return flatten(this);
   },
   ...PipeInspectableProto,
-  [TypeId]: {
+  [TypeId2]: {
     _Services: (_) => _
   },
   toJSON() {
@@ -1208,7 +1275,7 @@ var Proto = {
   }
 };
 var hasSameCache = (self, that) => self.cacheRoot === that.cacheRoot;
-var isContext = (u) => hasProperty(u, TypeId);
+var isContext = (u) => hasProperty(u, TypeId2);
 var isReference = (u) => !!u[ReferenceTypeId];
 var empty = () => emptyContext2;
 var emptyContext2 = /* @__PURE__ */ makeUnsafe(/* @__PURE__ */ new Map());
@@ -1259,6 +1326,11 @@ var serviceNotFoundError = (service2) => {
   return error;
 };
 var Reference = Service;
+
+// node_modules/effect/dist/Result.js
+var succeed2 = succeed;
+var fail2 = fail;
+var isFailure2 = isFailure;
 
 // node_modules/effect/dist/Scheduler.js
 var Scheduler = /* @__PURE__ */ Reference("effect/Scheduler", {
@@ -1453,8 +1525,18 @@ var Interrupt = class extends ReasonBase {
 };
 var causeInterrupt = (fiberId2) => new CauseImpl([new Interrupt(fiberId2)]);
 var hasFails = (self) => self.reasons.some(isFailReason);
+var findError = (self) => {
+  for (let i = 0; i < self.reasons.length; i++) {
+    const reason = self.reasons[i];
+    if (reason._tag === "Fail") {
+      return succeed2(reason.error);
+    }
+  }
+  return fail2(self);
+};
 var hasDies = (self) => self.reasons.some(isDieReason);
 var causeElectDefects = (self) => hasDies(self) && hasFails(self) ? causeFromReasons(self.reasons.map((reason) => reason._tag === "Fail" && !isDone(reason.error) ? new Die(reason.error, reason.annotations) : reason)) : self;
+var findRecoverableError = (self) => hasDies(self) ? fail2(causeElectDefects(self)) : findError(self);
 var hasInterrupts = (self) => self.reasons.some(isInterruptReason);
 var causeSquash = (self) => {
   let die2;
@@ -1734,9 +1816,9 @@ var maxInlineSteps = 32;
 var fiberMiddleware = {
   interruptChildren: void 0
 };
-var succeed = exitSucceed;
+var succeed3 = exitSucceed;
 var failCause = exitFailCause;
-var fail = exitFail;
+var fail3 = exitFail;
 var sync = /* @__PURE__ */ makePrimitive({
   op: "Sync",
   [evaluate](fiber2) {
@@ -1774,13 +1856,13 @@ var tryPromise = (options) => {
   return callbackOptions(function(resume, signal) {
     const failWithCatch = (cause) => suspend(() => {
       try {
-        return fail(internalCall(() => catcher(cause)));
+        return fail3(internalCall(() => catcher(cause)));
       } catch (err) {
         return die(err);
       }
     });
     try {
-      f(signal).then((a) => resume(succeed(a)), (e) => resume(failWithCatch(e)));
+      f(signal).then((a) => resume(succeed3(a)), (e) => resume(failWithCatch(e)));
     } catch (err) {
       resume(failWithCatch(err));
     }
@@ -1870,6 +1952,11 @@ var OnFailureImpl = function(self, f) {
   this[contE] = f;
 };
 OnFailureImpl.prototype = OnFailureProto;
+var catchCauseFilter = /* @__PURE__ */ dual(3, (self, filter2, f) => catchCause(self, (cause) => {
+  const eb = filter2(cause);
+  return isFailure2(eb) ? failCause(eb.failure) : f(eb.success, cause);
+}));
+var catch_ = /* @__PURE__ */ dual(2, (self, f) => catchCauseFilter(self, findRecoverableError, (e) => f(e)));
 var OnSuccessAndFailureProto = /* @__PURE__ */ makePrimitiveProto({
   op: "OnSuccessAndFailure",
   [evaluate]: evaluateCont
@@ -2044,6 +2131,8 @@ var logLevelColors = {
 
 // node_modules/effect/dist/Effect.js
 var tryPromise2 = tryPromise;
+var succeed4 = succeed3;
+var catch_2 = catch_;
 var runPromise2 = runPromise;
 
 // src/plugin.js
@@ -2053,70 +2142,154 @@ import { createHash } from "node:crypto";
 
 // src/issues.js
 var requireString = (value) => {
-  if (typeof value !== "string" || !value) throw new Error("Invalid issue response");
+  if (typeof value !== "string" || !value)
+    throw new Error("Invalid issue response");
   return value;
 };
 function githubRepository(context2) {
-  if (context2.provider !== "github" || !context2.apiReads || !context2.remoteUrl) throw new Error(`Source Control provider '${context2.provider}' is unsupported for issue reads.`);
+  if (context2.provider !== "github" || !context2.apiReads || !context2.remoteUrl)
+    throw new Error(
+      `Source Control provider '${context2.provider}' is unsupported for issue reads.`
+    );
   const raw = context2.remoteUrl.replace(/^git@([^:]+):/, "https://$1/");
   const url = new URL(raw);
   const host = new URL(context2.baseUrl).host;
-  if (url.host !== host) throw new Error("Repository host does not match the selected source-control host.");
+  if (url.host !== host)
+    throw new Error(
+      "Repository host does not match the selected source-control host."
+    );
   const repository = url.pathname.replace(/^\//, "").replace(/\.git$/, "");
-  if (!/^[\w.-]+\/[\w.-]+$/.test(repository)) throw new Error("Unsupported repository path.");
-  return { host, repository, prefix: `repos/${repository.split("/").map(encodeURIComponent).join("/")}` };
+  if (!/^[\w.-]+\/[\w.-]+$/.test(repository))
+    throw new Error("Unsupported repository path.");
+  return {
+    host,
+    repository,
+    prefix: `repos/${repository.split("/").map(encodeURIComponent).join("/")}`
+  };
 }
 function githubIssue(item, repository) {
-  if (item.pull_request || !Number.isSafeInteger(item.number) || item.number < 1) throw new Error("Invalid issue response");
-  return { source: "github", host: repository.host, repository: repository.repository, key: String(item.number), id: `github:${repository.host}:${repository.repository}:${item.number}`, label: `${repository.repository}#${item.number}: ${requireString(item.title)}`.slice(0, 200), title: item.title.slice(0, 200), body: typeof item.body === "string" ? item.body.slice(0, 6e3) : "", url: requireString(item.html_url), open: item.state === "open" };
+  if (item.pull_request || !Number.isSafeInteger(item.number) || item.number < 1)
+    throw new Error("Invalid issue response");
+  return {
+    source: "github",
+    host: repository.host,
+    repository: repository.repository,
+    key: String(item.number),
+    id: `github:${repository.host}:${repository.repository}:${item.number}`,
+    label: `${repository.repository}#${item.number}: ${requireString(item.title)}`.slice(
+      0,
+      200
+    ),
+    title: item.title.slice(0, 200),
+    body: typeof item.body === "string" ? item.body.slice(0, 6e3) : "",
+    url: requireString(item.html_url),
+    open: item.state === "open"
+  };
 }
 function linearIssue(item, workspace) {
-  return { source: "linear", host: "linear.app", repository: workspace, key: requireString(item.id), id: `linear:${workspace}:${item.id}`, label: `${requireString(item.identifier)}: ${requireString(item.title)}`.slice(0, 200), title: item.title.slice(0, 200), body: typeof item.description === "string" ? item.description.slice(0, 6e3) : "", url: requireString(item.url), open: !item.archivedAt && !["completed", "canceled"].includes(item.state?.type) };
+  return {
+    source: "linear",
+    host: "linear.app",
+    repository: workspace,
+    key: requireString(item.id),
+    id: `linear:${workspace}:${item.id}`,
+    label: `${requireString(item.identifier)}: ${requireString(item.title)}`.slice(
+      0,
+      200
+    ),
+    title: item.title.slice(0, 200),
+    body: typeof item.description === "string" ? item.description.slice(0, 6e3) : "",
+    url: requireString(item.url),
+    open: !item.archivedAt && !["completed", "canceled"].includes(item.state?.type)
+  };
 }
 function taskReference(issues) {
   if (issues.length === 0) return "";
-  const index = issues.map((issue) => `${issue.id}
+  const index = issues.map(
+    (issue) => `${issue.id}
 ${issue.title}
 ${issue.url}
-${issue.open ? "Open" : "Closed"}`).join("\n\n");
+${issue.open ? "Open" : "Closed"}`
+  ).join("\n\n");
   const overhead = 2 + issues.reduce((sum, _, i) => sum + `[${i + 1}] `.length, 0) + issues.length - 1;
   const remaining = 14e3 - index.length - overhead;
-  if (remaining < 0) throw new Error("Selected issue identities exceed the task context budget");
+  if (remaining < 0)
+    throw new Error("Selected issue identities exceed the task context budget");
   const share = Math.floor(remaining / issues.length);
   return index + "\n\n" + issues.map((issue, i) => `[${i + 1}] ${issue.body.slice(0, share)}`).join("\n");
 }
 function gitlabRepository(context2) {
-  if (context2.provider !== "gitlab" || !context2.apiReads || !context2.remoteUrl) throw new Error(`Source Control provider '${context2.provider}' is unsupported for issue reads.`);
-  const url = new URL(context2.remoteUrl.replace(/^git@([^:]+):/, "https://$1/"));
+  if (context2.provider !== "gitlab" || !context2.apiReads || !context2.remoteUrl)
+    throw new Error(
+      `Source Control provider '${context2.provider}' is unsupported for issue reads.`
+    );
+  const url = new URL(
+    context2.remoteUrl.replace(/^git@([^:]+):/, "https://$1/")
+  );
   const host = new URL(context2.baseUrl).host;
   const repository = url.pathname.replace(/^\//, "").replace(/\.git$/, "");
-  if (url.host !== host || !/^[\w.-]+(?:\/[\w.-]+)+$/.test(repository)) throw new Error("Unsupported repository identity");
-  return { host, repository, prefix: `projects/${encodeURIComponent(repository)}` };
+  if (url.host !== host || !/^[\w.-]+(?:\/[\w.-]+)+$/.test(repository))
+    throw new Error("Unsupported repository identity");
+  return {
+    host,
+    repository,
+    prefix: `projects/${encodeURIComponent(repository)}`
+  };
 }
 function sourceRepository(context2) {
   return context2.provider === "gitlab" ? { ...gitlabRepository(context2), source: "gitlab" } : { ...githubRepository(context2), source: "github" };
 }
 function gitlabIssue(item, repository) {
-  if (!Number.isSafeInteger(item.iid) || item.iid < 1) throw new Error("Invalid issue response");
-  return { source: "gitlab", host: repository.host, repository: repository.repository, key: String(item.iid), id: `gitlab:${repository.host}:${repository.repository}:${item.iid}`, label: `${repository.repository}#${item.iid}: ${requireString(item.title)}`.slice(0, 200), title: item.title.slice(0, 200), body: typeof item.description === "string" ? item.description.slice(0, 6e3) : "", url: requireString(item.web_url), open: item.state === "opened" };
+  if (!Number.isSafeInteger(item.iid) || item.iid < 1)
+    throw new Error("Invalid issue response");
+  return {
+    source: "gitlab",
+    host: repository.host,
+    repository: repository.repository,
+    key: String(item.iid),
+    id: `gitlab:${repository.host}:${repository.repository}:${item.iid}`,
+    label: `${repository.repository}#${item.iid}: ${requireString(item.title)}`.slice(
+      0,
+      200
+    ),
+    title: item.title.slice(0, 200),
+    body: typeof item.description === "string" ? item.description.slice(0, 6e3) : "",
+    url: requireString(item.web_url),
+    open: item.state === "opened"
+  };
 }
 
 // src/plugin.js
-var fail2 = (operation, cause) => ({ _tag: "PluginError", operation, cause });
-var effect = (operation, fn2) => tryPromise2({ try: fn2, catch: (cause) => fail2(operation, cause) });
+var fail4 = (operation, cause) => ({ _tag: "PluginError", operation, cause });
+var effect = (operation, fn2) => tryPromise2({ try: fn2, catch: (cause) => fail4(operation, cause) });
 var str = (v) => {
-  if (typeof v !== "string" || !v || v.length > 16384) throw new Error("Missing context");
+  if (typeof v !== "string" || !v || v.length > 16384)
+    throw new Error("Missing context");
   return v;
 };
-var action = (command, input, label = command) => ({ id: command, label, command, input });
+var action = (command, input, label = command) => ({
+  id: command,
+  label,
+  command,
+  input
+});
 var fields = "id identifier title description url archivedAt state { type }";
 var plugin_default = {
   apiVersion: 1,
   id: "from-issue",
   name: "From Issue",
-  version: "1.0.0",
+  version: "0.1.0",
   activate: (context2) => effect("activate", async () => {
-    if (!["contextual-associations", "task-context", "project-source-reads"].every((v) => context2.capabilities?.includes(v))) throw new Error("This plugin requires the prototype host with contextual associations, task context and project source reads.");
+    if (![
+      "contextual-associations",
+      "portable-view-navigation",
+      "command-invocation-context",
+      "task-context",
+      "project-source-reads"
+    ].every((v) => context2.capabilities?.includes(v)))
+      throw new Error(
+        "This plugin requires the prototype host with contextual associations, task context and project source reads."
+      );
     const file = join(context2.dataDirectory, "associations.json");
     await mkdir(context2.dataDirectory, { recursive: true });
     let state;
@@ -2126,7 +2299,8 @@ var plugin_default = {
       if (error.code !== "ENOENT") throw error;
       state = { projects: [], threads: [] };
     }
-    if (!Array.isArray(state.projects) || !Array.isArray(state.threads)) throw new Error("Invalid saved state");
+    if (!Array.isArray(state.projects) || !Array.isArray(state.threads))
+      throw new Error("Invalid saved state");
     let tail = Promise.resolve();
     const serial = (fn2) => {
       const next = tail.then(fn2);
@@ -2139,39 +2313,140 @@ var plugin_default = {
       await rename(`${file}.new`, file);
       state = next;
     };
-    const project = (id) => state.projects.find((p) => p.id === id) ?? { id, enabled: false, source: "source-control" };
+    const project = (id) => state.projects.find((p) => p.id === id) ?? {
+      id,
+      enabled: false,
+      source: "source-control"
+    };
     const selections = (p, t) => state.threads.find((row) => row.projectId === p && row.threadId === t)?.issues ?? [];
     const secretKey = (id) => `linear-${createHash("sha256").update(id).digest("hex").slice(0, 32)}`;
     const linear = async (id, query, variables, tokenOverride) => {
       const token = tokenOverride ?? await runPromise2(context2.secrets.get(secretKey(id)));
-      if (!token) throw new Error("Connect Linear with a read-only personal API key and explicit consent in this project's settings.");
-      const response = await fetch("https://api.linear.app/graphql", { method: "POST", headers: { Authorization: token, "Content-Type": "application/json" }, body: JSON.stringify({ query, variables }), signal: AbortSignal.timeout(15e3), redirect: "error" });
-      if (!response.ok) throw new Error("Linear authentication, permissions or rate limit prevented this request.");
+      if (!token)
+        throw new Error(
+          "Connect Linear with a read-only personal API key and explicit consent in this project's settings."
+        );
+      const response = await fetch("https://api.linear.app/graphql", {
+        method: "POST",
+        headers: { Authorization: token, "Content-Type": "application/json" },
+        body: JSON.stringify({ query, variables }),
+        signal: AbortSignal.timeout(15e3),
+        redirect: "error"
+      });
+      if (!response.ok)
+        throw new Error(
+          "Linear authentication, permissions or rate limit prevented this request."
+        );
       const raw = await response.text();
-      if (raw.length > 128 * 1024) throw new Error("Linear response exceeds the limit.");
+      if (raw.length > 128 * 1024)
+        throw new Error("Linear response exceeds the limit.");
       const body = JSON.parse(raw);
-      if (body.errors || !body.data) throw new Error("Linear could not read these issues. Check the key's permissions.");
+      if (body.errors || !body.data)
+        throw new Error(
+          "Linear could not read these issues. Check the key's permissions."
+        );
       return body.data;
     };
     const describe = (id) => runPromise2(context2.projects.describe(id));
-    const source = async (id, path) => JSON.parse(await runPromise2(context2.projects.readSource({ projectId: id, path })));
+    const source = async (id, path) => JSON.parse(
+      await runPromise2(
+        context2.projects.readSource({ projectId: id, path })
+      )
+    );
     const refresh = async (p, issue) => {
       if (issue.source === "github" || issue.source === "gitlab") {
         const repo = sourceRepository(await describe(p));
-        if (repo.source !== issue.source || repo.host !== issue.host || repo.repository !== issue.repository) throw new Error("The project's repository has changed; remove this link before selecting from the new repository.");
-        return (repo.source === "gitlab" ? gitlabIssue : githubIssue)(await source(p, `${repo.prefix}/issues/${encodeURIComponent(issue.key)}`), repo);
+        if (repo.source !== issue.source || repo.host !== issue.host || repo.repository !== issue.repository)
+          throw new Error(
+            "The project's repository has changed; remove this link before selecting from the new repository."
+          );
+        return (repo.source === "gitlab" ? gitlabIssue : githubIssue)(
+          await source(
+            p,
+            `${repo.prefix}/issues/${encodeURIComponent(issue.key)}`
+          ),
+          repo
+        );
       }
-      const { organization, issue: current } = await linear(p, `query($id: String!) { organization { id } issue(id: $id) { ${fields} } }`, { id: issue.key });
-      if (organization.id !== issue.repository || !current) throw new Error("Issue is unavailable in the connected Linear workspace.");
+      const { organization, issue: current } = await linear(
+        p,
+        `query($id: String!) { organization { id } issue(id: $id) { ${fields} } }`,
+        { id: issue.key }
+      );
+      if (organization.id !== issue.repository || !current)
+        throw new Error(
+          "Issue is unavailable in the connected Linear workspace."
+        );
       return linearIssue(current, organization.id);
     };
     const settings = async (input) => {
       const id = str(input?.projectId);
       await describe(id);
       const config = project(id);
-      const blocks = [{ id: "enabled", kind: "toggle", label: "From Issue", value: config.enabled, action: action("configure", { projectId: id, enabled: !config.enabled, source: config.source }) }];
-      if (config.enabled) blocks.push({ id: "source", kind: "form", label: "Save issue source", command: "configure", input: { projectId: id, enabled: true }, fields: [{ name: "source", kind: "select", label: "Issue source", value: config.source, options: [{ label: "Source Control", value: "source-control" }, { label: "Linear", value: "linear" }] }] });
-      if (config.enabled && config.source === "linear") blocks.push({ id: "connect", kind: "form", label: "Connect Linear", command: "connect", input: { projectId: id }, fields: [{ name: "token", kind: "password", label: "Read-only Linear personal API key", required: true }, { name: "consent", kind: "boolean", label: "Allow this project to search Linear and send selected issue context to its agents", value: false }] }, { id: "disconnect", kind: "actions", actions: [action("disconnect", { projectId: id }, "Disconnect Linear")] });
+      const blocks = [
+        {
+          id: "enabled",
+          kind: "toggle",
+          label: "From Issue",
+          value: config.enabled,
+          action: action("configure", {
+            projectId: id,
+            enabled: !config.enabled,
+            source: config.source
+          })
+        }
+      ];
+      if (config.enabled)
+        blocks.push({
+          id: "source",
+          kind: "form",
+          label: "Save issue source",
+          command: "configure",
+          input: { projectId: id, enabled: true },
+          fields: [
+            {
+              name: "source",
+              kind: "select",
+              label: "Issue source",
+              value: config.source,
+              options: [
+                { label: "Source Control", value: "source-control" },
+                { label: "Linear", value: "linear" }
+              ]
+            }
+          ]
+        });
+      if (config.enabled && config.source === "linear")
+        blocks.push(
+          {
+            id: "connect",
+            kind: "form",
+            label: "Connect Linear",
+            command: "connect",
+            input: { projectId: id },
+            fields: [
+              {
+                name: "token",
+                kind: "password",
+                label: "Read-only Linear personal API key",
+                required: true
+              },
+              {
+                name: "consent",
+                kind: "boolean",
+                label: "Allow this project to search Linear and send selected issue context to its agents",
+                value: false
+              }
+            ]
+          },
+          {
+            id: "disconnect",
+            kind: "actions",
+            actions: [
+              action("disconnect", { projectId: id }, "Disconnect Linear")
+            ]
+          }
+        );
       return { title: "From Issue", blocks };
     };
     const associationView = async (input) => {
@@ -2187,56 +2462,188 @@ var plugin_default = {
         if (config.source === "source-control") {
           const repo = sourceRepository(await describe(p));
           const page = cursor ? Number(cursor) : 1;
-          if (!Number.isSafeInteger(page) || page < 1 || page > 100) throw new Error("Invalid search page");
+          if (!Number.isSafeInteger(page) || page < 1 || page > 100)
+            throw new Error("Invalid search page");
           if (repo.source === "gitlab") {
-            const response = await source(p, `${repo.prefix}/issues?state=opened&scope=all&search=${encodeURIComponent(query)}&per_page=20&page=${page}`);
-            if (!Array.isArray(response)) throw new Error("Invalid source-control response");
-            options.push(...response.map((item) => gitlabIssue(item, repo)).filter((item) => item.open));
+            const response = await source(
+              p,
+              `${repo.prefix}/issues?state=opened&scope=all&search=${encodeURIComponent(query)}&per_page=20&page=${page}`
+            );
+            if (!Array.isArray(response))
+              throw new Error("Invalid source-control response");
+            options.push(
+              ...response.map((item) => gitlabIssue(item, repo)).filter((item) => item.open)
+            );
             if (response.length === 20) nextCursor = String(page + 1);
           } else {
-            const response = await source(p, `search/issues?q=${encodeURIComponent(query + " repo:" + repo.repository + " is:issue is:open")}&per_page=20&page=${page}`);
-            if (!Array.isArray(response.items)) throw new Error("Invalid source-control response");
+            const response = await source(
+              p,
+              `search/issues?q=${encodeURIComponent(query + " repo:" + repo.repository + " is:issue is:open")}&per_page=20&page=${page}`
+            );
+            if (!Array.isArray(response.items))
+              throw new Error("Invalid source-control response");
             for (const item of response.items) {
-              if (item.repository_url?.endsWith(`/${repo.prefix}`) && !item.pull_request && item.state === "open") options.push(githubIssue(item, repo));
+              if (item.repository_url?.endsWith(`/${repo.prefix}`) && !item.pull_request && item.state === "open")
+                options.push(githubIssue(item, repo));
             }
-            if (page * 20 < Math.min(response.total_count, 1e3)) nextCursor = String(page + 1);
+            if (page * 20 < Math.min(response.total_count, 1e3))
+              nextCursor = String(page + 1);
           }
         } else {
-          const filter2 = { state: { type: { nin: ["completed", "canceled"] } }, ...query ? { or: [{ title: { containsIgnoreCase: query } }, { description: { containsIgnoreCase: query } }] } : {} };
-          const response = await linear(p, `query($filter: IssueFilter, $after: String) { organization { id } issues(first: 20, after: $after, filter: $filter) { nodes { ${fields} } pageInfo { hasNextPage endCursor } } }`, { filter: filter2, after: cursor ?? null });
-          if (response.organization.id !== config.workspace) throw new Error("Linear workspace changed. Reconnect with explicit consent.");
-          options.push(...response.issues.nodes.map((item) => linearIssue(item, config.workspace)).filter((item) => item.open));
-          if (response.issues.pageInfo.hasNextPage) nextCursor = response.issues.pageInfo.endCursor;
+          const filter2 = {
+            state: { type: { nin: ["completed", "canceled"] } },
+            ...query ? {
+              or: [
+                { title: { containsIgnoreCase: query } },
+                { description: { containsIgnoreCase: query } }
+              ]
+            } : {}
+          };
+          const response = await linear(
+            p,
+            `query($filter: IssueFilter, $after: String) { organization { id } issues(first: 20, after: $after, filter: $filter) { nodes { ${fields} } pageInfo { hasNextPage endCursor } } }`,
+            { filter: filter2, after: cursor ?? null }
+          );
+          if (response.organization.id !== config.workspace)
+            throw new Error(
+              "Linear workspace changed. Reconnect with explicit consent."
+            );
+          options.push(
+            ...response.issues.nodes.map((item) => linearIssue(item, config.workspace)).filter((item) => item.open)
+          );
+          if (response.issues.pageInfo.hasNextPage)
+            nextCursor = response.issues.pageInfo.endCursor;
         }
       } catch (error) {
-        return { title: "From Issue", blocks: [{ id: "error", kind: "text", text: error.message?.startsWith("Source Control") ? error.message : "Issue search unavailable. Check this project's source, authentication and permissions. Existing links can still be removed." }, associationBlock(p, t, selected, [], void 0)] };
+        return {
+          title: "From Issue",
+          blocks: [
+            {
+              id: "error",
+              kind: "text",
+              text: error.message?.startsWith("Source Control") ? error.message : "Issue search unavailable. Check this project's source, authentication and permissions. Existing links can still be removed."
+            },
+            associationBlock(p, t, selected, [], void 0)
+          ]
+        };
       }
-      return { title: "From Issue", blocks: [associationBlock(p, t, selected, options, nextCursor)] };
+      return {
+        title: "From Issue",
+        blocks: [associationBlock(p, t, selected, options, nextCursor)]
+      };
     };
     function associationBlock(p, t, selected, options, nextCursor) {
-      const item = (issue, remove) => ({ id: issue.id, label: issue.label, select: action(remove ? "remove" : "select", { projectId: p, threadId: t, issue }, remove ? "Remove" : "Select"), open: action("open", { projectId: p, threadId: t, issue }, "Open issue") });
-      return { id: "issues", kind: "associations", label: "Issues", selected: selected.map((issue) => item(issue, true)), options: options.map((issue) => item(issue, selected.some((v) => v.id === issue.id))), ...nextCursor ? { nextCursor } : {} };
+      const item = (issue, remove) => ({
+        id: issue.id,
+        label: issue.label,
+        select: action(
+          remove ? "remove" : "select",
+          { projectId: p, threadId: t, issue },
+          remove ? "Remove" : "Select"
+        ),
+        open: action(
+          "open",
+          { projectId: p, threadId: t, issue },
+          "Open issue"
+        )
+      });
+      return {
+        id: "issues",
+        kind: "associations",
+        label: "Issues",
+        clear: action("clear", { projectId: p, threadId: t }, "Clear issues"),
+        selected: selected.map((issue) => item(issue, true)),
+        options: options.map(
+          (issue) => item(
+            issue,
+            selected.some((v) => v.id === issue.id)
+          )
+        ),
+        ...nextCursor ? { nextCursor } : {}
+      };
     }
-    const command = (id, permission, fn2, agent = false) => ({ id, title: id, description: `From Issue: ${id}`, permission, agent, run: (input) => effect(id, () => serial(() => fn2(input))) });
+    const command = (id, permission, fn2, agent = false) => ({
+      id,
+      title: id,
+      description: `From Issue: ${id}`,
+      permission,
+      agent,
+      run: (input, invocation) => effect(
+        id,
+        () => serial(
+          () => fn2({
+            ...input,
+            ...invocation?.audience === "agent" ? {
+              projectId: invocation.projectId,
+              threadId: invocation.threadId
+            } : {}
+          })
+        )
+      ).pipe(
+        catch_2(
+          () => succeed4({
+            $t3: "notice",
+            tone: "danger",
+            text: id === "connect" ? "Linear connection failed. Consent and a valid read-only key are required." : id === "select" ? "Issue could not be linked. It may be closed, unavailable, or the project source changed. Search again and check access." : "The operation could not be completed. Check the project source and permissions."
+          })
+        )
+      )
+    });
     return {
-      views: [{ id: "settings", title: "From Issue", location: "project-new-thread", permission: "orchestration:read", read: (input) => effect("settings", () => settings(input)) }, { id: "issues", title: "From Issue", location: "thread-associations", permission: "orchestration:read", read: (input) => effect("issues", () => associationView(input)) }],
+      views: [
+        {
+          id: "settings",
+          title: "From Issue",
+          location: "project-new-thread",
+          permission: "orchestration:read",
+          read: (input) => effect("settings", () => settings(input))
+        },
+        {
+          id: "issues",
+          title: "From Issue",
+          location: "thread-associations",
+          permission: "orchestration:read",
+          read: (input) => effect("issues", () => associationView(input))
+        }
+      ],
       commands: [
+        command("search", "orchestration:read", associationView, true),
         command("configure", "settings:write", async (input) => {
           const id = str(input.projectId);
           await describe(id);
-          if (typeof input.enabled !== "boolean" || !["source-control", "linear"].includes(input.source)) throw new Error("Invalid settings");
-          const config = { ...project(id), enabled: input.enabled, source: input.source };
-          await persist({ ...state, projects: [...state.projects.filter((p) => p.id !== id), config] });
+          if (typeof input.enabled !== "boolean" || !["source-control", "linear"].includes(input.source))
+            throw new Error("Invalid settings");
+          const config = {
+            ...project(id),
+            enabled: input.enabled,
+            source: input.source
+          };
+          await persist({
+            ...state,
+            projects: [...state.projects.filter((p) => p.id !== id), config]
+          });
           return null;
         }),
         command("connect", "settings:write", async (input) => {
           const id = str(input.projectId);
           await describe(id);
-          if (input.consent !== true) throw new Error("Explicit consent is required");
+          if (input.consent !== true)
+            throw new Error("Explicit consent is required");
           const token = str(input.token);
-          const { organization } = await linear(id, "{ organization { id name } }", {}, token);
+          const { organization } = await linear(
+            id,
+            "{ organization { id name } }",
+            {},
+            token
+          );
           await runPromise2(context2.secrets.set(secretKey(id), token));
-          await persist({ ...state, projects: [...state.projects.filter((p) => p.id !== id), { ...project(id), workspace: organization.id }] });
+          await persist({
+            ...state,
+            projects: [
+              ...state.projects.filter((p) => p.id !== id),
+              { ...project(id), workspace: organization.id }
+            ]
+          });
           return null;
         }),
         command("disconnect", "settings:write", async (input) => {
@@ -2244,36 +2651,122 @@ var plugin_default = {
           await runPromise2(context2.secrets.remove(secretKey(id)));
           return null;
         }),
-        command("select", "orchestration:operate", async (input) => {
-          const p = str(input.projectId), t = str(input.threadId);
-          if (!project(p).enabled) throw new Error("From Issue is disabled");
-          const issue = await refresh(p, input.issue);
-          if (!issue.open) throw new Error("This issue is closed or archived. Search again.");
-          const existing = selections(p, t);
-          if (existing.some((i) => i.id === issue.id)) return null;
-          if (existing.length >= 20) throw new Error("At most twenty issues can be linked");
-          await persist({ ...state, threads: [...state.threads.filter((r) => r.projectId !== p || r.threadId !== t), { projectId: p, threadId: t, issues: [...existing, issue] }] });
-          return null;
-        }),
-        command("remove", "orchestration:operate", async (input) => {
-          const p = str(input.projectId), t = str(input.threadId);
-          await persist({ ...state, threads: [...state.threads.filter((r) => r.projectId !== p || r.threadId !== t), { projectId: p, threadId: t, issues: selections(p, t).filter((i) => i.id !== input.issue?.id) }] });
-          return null;
-        }),
-        command("open", "orchestration:read", async (input) => {
-          const p = str(input.projectId), t = str(input.threadId);
-          const linked = selections(p, t).find((i) => i.id === input.issue?.id);
-          if (!linked) throw new Error("Issue is no longer linked");
-          try {
-            const current = await refresh(p, linked);
-            return { $t3: "document", title: current.label, text: `${current.url}
+        command(
+          "select",
+          "orchestration:operate",
+          async (input) => {
+            const p = str(input.projectId), t = str(input.threadId);
+            if (!project(p).enabled)
+              throw new Error("From Issue is disabled");
+            const issue = await refresh(p, input.issue);
+            if (!issue.open)
+              throw new Error(
+                "This issue is closed or archived. Search again."
+              );
+            const existing = selections(p, t);
+            if (existing.some((i) => i.id === issue.id)) return null;
+            if (existing.length >= 20)
+              throw new Error("At most twenty issues can be linked");
+            await persist({
+              ...state,
+              threads: [
+                ...state.threads.filter(
+                  (r) => r.projectId !== p || r.threadId !== t
+                ),
+                { projectId: p, threadId: t, issues: [...existing, issue] }
+              ]
+            });
+            return null;
+          },
+          true
+        ),
+        command(
+          "remove",
+          "orchestration:operate",
+          async (input) => {
+            const p = str(input.projectId), t = str(input.threadId);
+            await persist({
+              ...state,
+              threads: [
+                ...state.threads.filter(
+                  (r) => r.projectId !== p || r.threadId !== t
+                ),
+                {
+                  projectId: p,
+                  threadId: t,
+                  issues: selections(p, t).filter(
+                    (i) => i.id !== input.issue?.id
+                  )
+                }
+              ]
+            });
+            return null;
+          },
+          true
+        ),
+        command(
+          "clear",
+          "orchestration:operate",
+          async (input) => {
+            const p = str(input.projectId), t = str(input.threadId);
+            await persist({
+              ...state,
+              threads: state.threads.filter(
+                (r) => r.projectId !== p || r.threadId !== t
+              )
+            });
+            return null;
+          },
+          true
+        ),
+        command(
+          "open",
+          "orchestration:read",
+          async (input) => {
+            const p = str(input.projectId), t = str(input.threadId);
+            const linked = selections(p, t).find(
+              (i) => i.id === input.issue?.id
+            );
+            if (!linked) throw new Error("Issue is no longer linked");
+            try {
+              const current = await refresh(p, linked);
+              return {
+                $t3: "view",
+                view: {
+                  title: current.label,
+                  blocks: [
+                    {
+                      id: "issue",
+                      kind: "text",
+                      text: `${current.url}
 ${current.open ? "Open" : "Closed"}
 
-${current.body}`.slice(0, 16384) };
-          } catch {
-            return { $t3: "document", title: linked.label, text: "This issue is unavailable or permission was revoked. Cached private content is not displayed. Remove the link or restore access." };
-          }
-        }, true)
+${current.body}`.slice(
+                        0,
+                        16384
+                      )
+                    }
+                  ]
+                }
+              };
+            } catch {
+              return {
+                $t3: "view",
+                view: {
+                  title: "Unavailable linked issue",
+                  blocks: [
+                    {
+                      id: "unavailable",
+                      kind: "text",
+                      text: "This issue is unavailable or permission was revoked. Cached private content is not displayed. Remove the link or restore access."
+                    }
+                  ]
+                }
+              };
+            }
+          },
+          true
+        )
       ],
       taskContext: (input) => effect("task-context", async () => {
         await tail;
@@ -2283,7 +2776,12 @@ ${current.body}`.slice(0, 16384) };
           try {
             fresh.push(await refresh(input.projectId, issue));
           } catch {
-            fresh.push({ ...issue, body: "Issue unavailable. No cached description is supplied.", title: "Unavailable linked issue", open: false });
+            fresh.push({
+              ...issue,
+              body: "Issue unavailable. No cached description is supplied.",
+              title: "Unavailable linked issue",
+              open: false
+            });
           }
         }
         return taskReference(fresh);
