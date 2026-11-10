@@ -13,4 +13,3 @@
 * fix: retain every issue identity within the task context budget (4811bfb0)
 * feat: read GitLab issues through the host glab adapter (82c14a8c)
 * feat: implement project-scoped issue associations (91369db9)
-
