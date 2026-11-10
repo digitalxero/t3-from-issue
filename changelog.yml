@@ -1,0 +1,174 @@
+- semver: 0.1.0
+  date: 2026-11-10T11:59:41.473331865-08:00
+  packager: DigitalXero
+  changes:
+    - commit: 0ebb455ef615147f3b2d368bdd13e54a88f5903b
+      note: 'fix: keep issue numbers visible in compact thread panels'
+      author:
+        name: Dj Gilcrease
+        email: digitalxero@gmail.com
+      committer:
+        name: Dj Gilcrease
+        email: digitalxero@gmail.com
+      conventional_commit:
+        category: fix
+        scope: ""
+        description: keep issue numbers visible in compact thread panels
+        body: ""
+        footer: []
+        major: false
+        minor: false
+        patch: true
+    - commit: 0bc27eaef2623b7fd1ffe8a766c6e50038746463
+      note: 'chore: refresh unpublished v0.1.0 changelog'
+      author:
+        name: Dj Gilcrease
+        email: digitalxero@gmail.com
+      committer:
+        name: Dj Gilcrease
+        email: digitalxero@gmail.com
+      conventional_commit:
+        category: chore
+        scope: ""
+        description: refresh unpublished v0.1.0 changelog
+        body: ""
+        footer: []
+        major: false
+        minor: false
+        patch: false
+    - commit: 03929c30ce53f918099aeb70b0bcd18305acbf97
+      note: 'fix: reject redirected issue identity changes'
+      author:
+        name: Dj Gilcrease
+        email: digitalxero@gmail.com
+      committer:
+        name: Dj Gilcrease
+        email: digitalxero@gmail.com
+      conventional_commit:
+        category: fix
+        scope: ""
+        description: reject redirected issue identity changes
+        body: ""
+        footer: []
+        major: false
+        minor: false
+        patch: true
+    - commit: 0a20bbd08731ff0ee44d56e1bf68cf38c796b277
+      note: 'docs: describe installation and verified platform limits'
+      author:
+        name: Dj Gilcrease
+        email: digitalxero@gmail.com
+      committer:
+        name: Dj Gilcrease
+        email: digitalxero@gmail.com
+      conventional_commit:
+        category: docs
+        scope: ""
+        description: describe installation and verified platform limits
+        body: ""
+        footer: []
+        major: false
+        minor: false
+        patch: true
+    - commit: ad46e361e202e5cbb09846e50a21229cd8620062
+      note: 'chore: prepare v0.1.0 release notes'
+      author:
+        name: Dj Gilcrease
+        email: digitalxero@gmail.com
+      committer:
+        name: Dj Gilcrease
+        email: digitalxero@gmail.com
+      conventional_commit:
+        category: chore
+        scope: ""
+        description: prepare v0.1.0 release notes
+        body: ""
+        footer: []
+        major: false
+        minor: false
+        patch: false
+    - commit: cc66ff7c798d7d219f16971c4a1bfbe07b2547d1
+      note: 'feat: complete portable issue views and consent lifecycle'
+      author:
+        name: Dj Gilcrease
+        email: digitalxero@gmail.com
+      committer:
+        name: Dj Gilcrease
+        email: digitalxero@gmail.com
+      conventional_commit:
+        category: feat
+        scope: ""
+        description: complete portable issue views and consent lifecycle
+        body: ""
+        footer: []
+        major: false
+        minor: true
+        patch: false
+    - commit: 3de2ee775f84626934c0b34b2b0284a370797fa7
+      note: 'fix: count reference formatting in the context budget'
+      author:
+        name: Dj Gilcrease
+        email: digitalxero@gmail.com
+      committer:
+        name: Dj Gilcrease
+        email: digitalxero@gmail.com
+      conventional_commit:
+        category: fix
+        scope: ""
+        description: count reference formatting in the context budget
+        body: ""
+        footer: []
+        major: false
+        minor: false
+        patch: true
+    - commit: 4811bfb0b6fd65c9d887f28f6990a5f8a335ab94
+      note: 'fix: retain every issue identity within the task context budget'
+      author:
+        name: Dj Gilcrease
+        email: digitalxero@gmail.com
+      committer:
+        name: Dj Gilcrease
+        email: digitalxero@gmail.com
+      conventional_commit:
+        category: fix
+        scope: ""
+        description: retain every issue identity within the task context budget
+        body: ""
+        footer: []
+        major: false
+        minor: false
+        patch: true
+    - commit: 82c14a8cdbd2d2b8e2510d1540239c3c1a8c39c9
+      note: 'feat: read GitLab issues through the host glab adapter'
+      author:
+        name: Dj Gilcrease
+        email: digitalxero@gmail.com
+      committer:
+        name: Dj Gilcrease
+        email: digitalxero@gmail.com
+      conventional_commit:
+        category: feat
+        scope: ""
+        description: read GitLab issues through the host glab adapter
+        body: ""
+        footer: []
+        major: false
+        minor: true
+        patch: false
+    - commit: 91369db9bb0a67ef4e9e0ad513611104b3caba33
+      note: 'feat: implement project-scoped issue associations'
+      author:
+        name: Dj Gilcrease
+        email: digitalxero@gmail.com
+      committer:
+        name: Dj Gilcrease
+        email: digitalxero@gmail.com
+      conventional_commit:
+        category: feat
+        scope: ""
+        description: implement project-scoped issue associations
+        body: ""
+        footer: []
+        major: false
+        minor: true
+        patch: false
