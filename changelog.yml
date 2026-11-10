@@ -1,0 +1,89 @@
+- semver: 0.1.0
+  date: 2026-11-10T11:34:47.354252756-08:00
+  packager: DigitalXero
+  changes:
+    - commit: cc66ff7c798d7d219f16971c4a1bfbe07b2547d1
+      note: 'feat: complete portable issue views and consent lifecycle'
+      author:
+        name: Dj Gilcrease
+        email: digitalxero@gmail.com
+      committer:
+        name: Dj Gilcrease
+        email: digitalxero@gmail.com
+      conventional_commit:
+        category: feat
+        scope: ""
+        description: complete portable issue views and consent lifecycle
+        body: ""
+        footer: []
+        major: false
+        minor: true
+        patch: false
+    - commit: 3de2ee775f84626934c0b34b2b0284a370797fa7
+      note: 'fix: count reference formatting in the context budget'
+      author:
+        name: Dj Gilcrease
+        email: digitalxero@gmail.com
+      committer:
+        name: Dj Gilcrease
+        email: digitalxero@gmail.com
+      conventional_commit:
+        category: fix
+        scope: ""
+        description: count reference formatting in the context budget
+        body: ""
+        footer: []
+        major: false
+        minor: false
+        patch: true
+    - commit: 4811bfb0b6fd65c9d887f28f6990a5f8a335ab94
+      note: 'fix: retain every issue identity within the task context budget'
+      author:
+        name: Dj Gilcrease
+        email: digitalxero@gmail.com
+      committer:
+        name: Dj Gilcrease
+        email: digitalxero@gmail.com
+      conventional_commit:
+        category: fix
+        scope: ""
+        description: retain every issue identity within the task context budget
+        body: ""
+        footer: []
+        major: false
+        minor: false
+        patch: true
+    - commit: 82c14a8cdbd2d2b8e2510d1540239c3c1a8c39c9
+      note: 'feat: read GitLab issues through the host glab adapter'
+      author:
+        name: Dj Gilcrease
+        email: digitalxero@gmail.com
+      committer:
+        name: Dj Gilcrease
+        email: digitalxero@gmail.com
+      conventional_commit:
+        category: feat
+        scope: ""
+        description: read GitLab issues through the host glab adapter
+        body: ""
+        footer: []
+        major: false
+        minor: true
+        patch: false
+    - commit: 91369db9bb0a67ef4e9e0ad513611104b3caba33
+      note: 'feat: implement project-scoped issue associations'
+      author:
+        name: Dj Gilcrease
+        email: digitalxero@gmail.com
+      committer:
+        name: Dj Gilcrease
+        email: digitalxero@gmail.com
+      conventional_commit:
+        category: feat
+        scope: ""
+        description: implement project-scoped issue associations
+        body: ""
+        footer: []
+        major: false
+        minor: true
+        patch: false
