@@ -21,7 +21,9 @@ share. Disconnect removes the stored key; it does not revoke the key at Linear.
 
 The plugin keeps at most 20 links per thread, returns 20 search results per page,
 rechecks selected issues, and supplies at most 14,000 characters of issue context
-per turn. It does not write back to trackers, include comments or attachments,
+per turn. Source-control API responses are limited to 128 KiB; oversized results
+are rejected. GitHub search exposes at most 1,000 matches and GitLab search
+accepts up to 100 pages; refine the search for larger issue lists. It does not write back to trackers, include comments or attachments,
 or transfer its private link database through thread rehoming. Removing the
 plugin removes its host-managed data. Reinstalling cannot recover removed links.
 
@@ -29,7 +31,10 @@ plugin removes its host-managed data. Reinstalling cannot recover removed links.
 
 Install `https://github.com/digitalxero/t3-from-issue` in **Settings → Plugins**
 on the prototype fork with [host PR #3](https://github.com/djgilcrease/t3code/pull/3)
-integrated. Release notes pin the exact verified host commit. The plugin checks
+integrated. The minimum verified host is
+[d91fdaa33acf40b471c75d0939a484dc07aae15e](https://github.com/djgilcrease/t3code/commit/d91fdaa33acf40b471c75d0939a484dc07aae15e)
+on `djgilcrease/t3code:t3/create-plugin-system`, or a descendant retaining the
+required SDK capabilities. The plugin checks
 API version 1 and the `contextual-associations`, `portable-view-navigation`,
 `command-invocation-context`, `task-context`, and `project-source-reads`
 capabilities during activation.
