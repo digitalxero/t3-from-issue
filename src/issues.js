@@ -22,7 +22,8 @@ export function linearIssue(item, workspace) {
 export function taskReference(issues) {
   if (issues.length === 0) return "";
   const index = issues.map((issue) => `${issue.id}\n${issue.title}\n${issue.url}\n${issue.open ? "Open" : "Closed"}`).join("\n\n");
-  const remaining = 14000 - index.length - issues.length * 4;
+  const overhead = 2 + issues.reduce((sum, _, i) => sum + `[${i + 1}] `.length, 0) + issues.length - 1;
+  const remaining = 14000 - index.length - overhead;
   if (remaining < 0) throw new Error("Selected issue identities exceed the task context budget");
   const share = Math.floor(remaining / issues.length);
   return index + "\n\n" + issues.map((issue, i) => `[${i + 1}] ${issue.body.slice(0, share)}`).join("\n");

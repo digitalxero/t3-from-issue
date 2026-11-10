@@ -2074,19 +2074,16 @@ function linearIssue(item, workspace) {
   return { source: "linear", host: "linear.app", repository: workspace, key: requireString(item.id), id: `linear:${workspace}:${item.id}`, label: `${requireString(item.identifier)}: ${requireString(item.title)}`.slice(0, 200), title: item.title.slice(0, 200), body: typeof item.description === "string" ? item.description.slice(0, 6e3) : "", url: requireString(item.url), open: !item.archivedAt && !["completed", "canceled"].includes(item.state?.type) };
 }
 function taskReference(issues) {
-  let budget = 14e3;
-  const parts = [];
-  for (const issue of issues) {
-    const text = `${issue.id}
+  if (issues.length === 0) return "";
+  const index = issues.map((issue) => `${issue.id}
 ${issue.title}
 ${issue.url}
-${issue.open ? "Open" : "Closed"}
-${issue.body}`;
-    if (budget <= 0) break;
-    parts.push(text.slice(0, budget));
-    budget -= parts.at(-1).length + 2;
-  }
-  return parts.join("\n\n");
+${issue.open ? "Open" : "Closed"}`).join("\n\n");
+  const overhead = 2 + issues.reduce((sum, _, i) => sum + `[${i + 1}] `.length, 0) + issues.length - 1;
+  const remaining = 14e3 - index.length - overhead;
+  if (remaining < 0) throw new Error("Selected issue identities exceed the task context budget");
+  const share = Math.floor(remaining / issues.length);
+  return index + "\n\n" + issues.map((issue, i) => `[${i + 1}] ${issue.body.slice(0, share)}`).join("\n");
 }
 function gitlabRepository(context2) {
   if (context2.provider !== "gitlab" || !context2.apiReads || !context2.remoteUrl) throw new Error(`Source Control provider '${context2.provider}' is unsupported for issue reads.`);
